@@ -1,0 +1,166 @@
+{
+  "info": {
+    "name": "Pocket Spellbook API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "access_token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const token = json.access_token;",
+                  "  if (token) { pm.environment.set('access_token', token); }",
+                  "} catch (e) { /* ignore */ }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Characters",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          { "key": "token", "value": "{{access_token}}", "type": "string" }
+        ]
+      },
+      "item": [
+        {
+          "name": "Create character",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/characters",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gandalf\",\n  \"characterClassId\": 1,\n  \"spellSlots\": { \"1\": 4, \"2\": 3 }\n}"
+            }
+          }
+        },
+        {
+          "name": "Get my characters",
+          "request": { "method": "GET", "url": "{{baseUrl}}/characters" }
+        },
+        {
+          "name": "Get character by id",
+          "request": { "method": "GET", "url": "{{baseUrl}}/characters/1" }
+        },
+        {
+          "name": "Update character",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/characters/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gandalf the Grey\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete character",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/characters/1" }
+        },
+        {
+          "name": "Get character spells",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/characters/1/spells"
+          }
+        },
+        {
+          "name": "Learn spell",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/characters/1/spells/5"
+          }
+        },
+        {
+          "name": "Forget spell",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/characters/1/spells/5"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spells",
+      "item": [
+        {
+          "name": "List spells (filters optional)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/spells?page=1&limit=20&level=3&school=Evocation&search=fire&characterClass=Wizard&language=en&source=PHB",
+              "host": ["{{baseUrl}}"],
+              "path": ["spells"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "level", "value": "3" },
+                { "key": "school", "value": "Evocation" },
+                { "key": "search", "value": "fire" },
+                { "key": "characterClass", "value": "Wizard" },
+                { "key": "language", "value": "en" },
+                { "key": "source", "value": "PHB" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "Get spell by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/spells/1?language=en"
+          }
+        },
+
+        {
+          "name": "Get class spells stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/spells/class/1/stats"
+          }
+        }
+      ]
+    }
+  ]
+}
