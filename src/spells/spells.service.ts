@@ -89,15 +89,17 @@ export class SpellsService {
     }
 
     if (filters?.search) {
+      const searchTerm = `${filters.search}*`;
+
       if (filters.language === 'ru') {
         queryBuilder.andWhere(
-          'MATCH(spell.name_ru, spell.text_ru) AGAINST(:search IN NATURAL LANGUAGE MODE)',
-          { search: filters.search },
+          'MATCH(spell.name_ru, spell.text_ru) AGAINST(:search IN BOOLEAN MODE)',
+          { search: searchTerm },
         );
       } else {
         queryBuilder.andWhere(
-          'MATCH(spell.name_en, spell.text_en) AGAINST(:search IN NATURAL LANGUAGE MODE)',
-          { search: filters.search },
+          'MATCH(spell.name_en, spell.text_en) AGAINST(:search IN BOOLEAN MODE)',
+          { search: searchTerm },
         );
       }
     }
