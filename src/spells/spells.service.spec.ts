@@ -206,8 +206,8 @@ describe('SpellsService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0].name).toBe('Acid Splash');
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'MATCH(spell.name_en, spell.text_en) AGAINST(:search IN NATURAL LANGUAGE MODE)',
-        { search: 'Acid' },
+        'MATCH(spell.name_en, spell.text_en) AGAINST(:search IN BOOLEAN MODE)',
+        { search: 'Acid*' },
       );
     });
 
@@ -226,8 +226,8 @@ describe('SpellsService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0].name).toBe('Огненный шар');
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'MATCH(spell.name_ru, spell.text_ru) AGAINST(:search IN NATURAL LANGUAGE MODE)',
-        { search: 'Огненный' },
+        'MATCH(spell.name_ru, spell.text_ru) AGAINST(:search IN BOOLEAN MODE)',
+        { search: 'Огненный*' },
       );
     });
 

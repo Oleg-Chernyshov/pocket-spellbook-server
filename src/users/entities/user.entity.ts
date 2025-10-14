@@ -22,6 +22,9 @@ export class User {
   @Column({ nullable: true })
   name: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  refreshToken: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

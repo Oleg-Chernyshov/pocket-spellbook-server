@@ -1,9 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
+import { UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { LoginUserDto } from '../users/dto/user.dto';
 import { User } from '../users/entities/user.entity';
+import * as bcrypt from 'bcryptjs';
+
+jest.mock('bcryptjs');
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -12,6 +16,8 @@ describe('AuthService', () => {
 
   const mockUsersService = {
     validateUser: jest.fn(),
+    findById: jest.fn(),
+    updateRefreshToken: jest.fn(),
   };
 
   const mockJwtService = {
@@ -23,6 +29,7 @@ describe('AuthService', () => {
     name: 'Test User',
     email: 'test@example.com',
     password: 'hashedPassword',
+    refreshToken: null,
     characters: [],
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
@@ -130,147 +137,212 @@ describe('AuthService', () => {
   });
 
   describe('login', () => {
-    it('should return access token and user info for valid user', () => {
-      const mockToken = 'jwt-token-here';
-      mockJwtService.sign.mockReturnValue(mockToken);
+    it('should return access token, refresh token and user info for valid user', async () => {
+      const mockAccessToken = 'access-token-here';
+      const mockRefreshToken = 'refresh-token-here';
+      const mockHashedToken = 'hashed-refresh-token';
 
-      const result = service.login(mockUser);
+      mockJwtService.sign.mockReturnValueOnce(mockAccessToken);
+      mockJwtService.sign.mockReturnValueOnce(mockRefreshToken);
+      (bcrypt.hash as jest.Mock).mockResolvedValue(mockHashedToken);
+      mockUsersService.updateRefreshToken.mockResolvedValue(undefined);
+
+      const result = await service.login(mockUser);
 
       expect(result).toEqual({
-        access_token: mockToken,
+        access_token: mockAccessToken,
+        refresh_token: mockRefreshToken,
         user: {
           id: mockUser.id,
           email: mockUser.email,
         },
       });
 
-      expect(jwtService.sign).toHaveBeenCalledWith({
-        email: mockUser.email,
-        sub: mockUser.id,
-      });
-      expect(jwtService.sign).toHaveBeenCalledTimes(1);
+      expect(jwtService.sign).toHaveBeenCalledTimes(2);
+      expect(bcrypt.hash).toHaveBeenCalledWith(mockRefreshToken, 10);
+      expect(usersService.updateRefreshToken).toHaveBeenCalledWith(
+        mockUser.id,
+        mockHashedToken,
+      );
     });
 
-    it('should handle JWT service errors', () => {
-      mockJwtService.sign.mockImplementation(() => {
-        throw new Error('JWT signing failed');
-      });
+    it('should not expose sensitive user information', async () => {
+      const mockAccessToken = 'access-token';
+      const mockRefreshToken = 'refresh-token';
+      const mockHashedToken = 'hashed-token';
 
-      expect(() => service.login(mockUser)).toThrow('JWT signing failed');
-      expect(jwtService.sign).toHaveBeenCalledWith({
-        email: mockUser.email,
-        sub: mockUser.id,
-      });
-    });
+      mockJwtService.sign.mockReturnValueOnce(mockAccessToken);
+      mockJwtService.sign.mockReturnValueOnce(mockRefreshToken);
+      (bcrypt.hash as jest.Mock).mockResolvedValue(mockHashedToken);
+      mockUsersService.updateRefreshToken.mockResolvedValue(undefined);
 
-    it('should work with different user data', () => {
-      const differentUser: User = {
-        ...mockUser,
-        id: 2,
-        email: 'another@example.com',
-      };
-
-      const mockToken = 'different-jwt-token';
-      mockJwtService.sign.mockReturnValue(mockToken);
-
-      const result = service.login(differentUser);
-
-      expect(result).toEqual({
-        access_token: mockToken,
-        user: {
-          id: differentUser.id,
-          email: differentUser.email,
-        },
-      });
-
-      expect(jwtService.sign).toHaveBeenCalledWith({
-        email: differentUser.email,
-        sub: differentUser.id,
-      });
-    });
-
-    it('should handle user with minimal data', () => {
-      const minimalUser: User = {
-        id: 3,
-        email: 'minimal@example.com',
-        password: 'hashed',
-        characters: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        name: 'Test User',
-      };
-
-      const mockToken = 'minimal-token';
-      mockJwtService.sign.mockReturnValue(mockToken);
-
-      const result = service.login(minimalUser);
-
-      expect(result).toEqual({
-        access_token: mockToken,
-        user: {
-          id: minimalUser.id,
-          email: minimalUser.email,
-        },
-      });
-    });
-
-    it('should not expose sensitive user information', () => {
-      const mockToken = 'secure-token';
-      mockJwtService.sign.mockReturnValue(mockToken);
-
-      const result = service.login(mockUser);
+      const result = await service.login(mockUser);
 
       expect(result.user).not.toHaveProperty('password');
       expect(result.user).not.toHaveProperty('characters');
       expect(result.user).not.toHaveProperty('createdAt');
       expect(result.user).not.toHaveProperty('updatedAt');
+      expect(result.user).not.toHaveProperty('refreshToken');
 
       expect(result.user).toHaveProperty('id');
       expect(result.user).toHaveProperty('email');
     });
   });
 
-  describe('edge cases', () => {
-    it('should handle user with null values', () => {
-      const nullUser: User = {
-        id: 4,
-        email: null as unknown as string,
-        password: 'hashed',
-        characters: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        name: 'Test User',
+  describe('refreshTokens', () => {
+    const userId = 1;
+    const refreshToken = 'valid-refresh-token';
+    const hashedRefreshToken = 'hashed-refresh-token';
+
+    it('should successfully refresh tokens with valid refresh token', async () => {
+      const userWithRefreshToken: User = {
+        ...mockUser,
+        refreshToken: hashedRefreshToken,
       };
 
-      const mockToken = 'null-token';
-      mockJwtService.sign.mockReturnValue(mockToken);
+      const newAccessToken = 'new-access-token';
+      const newRefreshToken = 'new-refresh-token';
+      const newHashedToken = 'new-hashed-token';
 
-      const result = service.login(nullUser);
+      mockUsersService.findById.mockResolvedValue(userWithRefreshToken);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      mockJwtService.sign.mockReturnValueOnce(newAccessToken);
+      mockJwtService.sign.mockReturnValueOnce(newRefreshToken);
+      (bcrypt.hash as jest.Mock).mockResolvedValue(newHashedToken);
+      mockUsersService.updateRefreshToken.mockResolvedValue(undefined);
 
-      expect(result.user.email).toBeNull();
-      expect(jwtService.sign).toHaveBeenCalledWith({
-        email: null,
-        sub: 4,
+      const result = await service.refreshTokens(userId, refreshToken);
+
+      expect(result).toEqual({
+        access_token: newAccessToken,
+        refresh_token: newRefreshToken,
       });
+
+      expect(usersService.findById).toHaveBeenCalledWith(userId);
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        refreshToken,
+        hashedRefreshToken,
+      );
+      expect(jwtService.sign).toHaveBeenCalledTimes(2);
+      expect(usersService.updateRefreshToken).toHaveBeenCalledWith(
+        userId,
+        newHashedToken,
+      );
     });
 
-    it('should handle very long email addresses', () => {
-      const longEmail = 'a'.repeat(100) + '@example.com';
-      const longEmailUser: User = {
+    it('should throw UnauthorizedException if user not found', async () => {
+      mockUsersService.findById.mockResolvedValue(null);
+
+      await expect(service.refreshTokens(userId, refreshToken)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.refreshTokens(userId, refreshToken)).rejects.toThrow(
+        'Доступ запрещен',
+      );
+
+      expect(usersService.findById).toHaveBeenCalledWith(userId);
+    });
+
+    it('should throw UnauthorizedException if user has no refresh token', async () => {
+      const userWithoutToken: User = {
         ...mockUser,
-        email: longEmail,
+        refreshToken: null,
       };
 
-      const mockToken = 'long-email-token';
-      mockJwtService.sign.mockReturnValue(mockToken);
+      mockUsersService.findById.mockResolvedValue(userWithoutToken);
 
-      const result = service.login(longEmailUser);
+      await expect(service.refreshTokens(userId, refreshToken)).rejects.toThrow(
+        UnauthorizedException,
+      );
 
-      expect(result.user.email).toBe(longEmail);
-      expect(jwtService.sign).toHaveBeenCalledWith({
-        email: longEmail,
-        sub: mockUser.id,
-      });
+      expect(usersService.findById).toHaveBeenCalledWith(userId);
+    });
+
+    it('should throw UnauthorizedException if refresh token does not match', async () => {
+      const userWithRefreshToken: User = {
+        ...mockUser,
+        refreshToken: hashedRefreshToken,
+      };
+
+      mockUsersService.findById.mockResolvedValue(userWithRefreshToken);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(service.refreshTokens(userId, refreshToken)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.refreshTokens(userId, refreshToken)).rejects.toThrow(
+        'Доступ запрещен',
+      );
+
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        refreshToken,
+        hashedRefreshToken,
+      );
+    });
+
+    it('should generate new tokens with correct payload', async () => {
+      const userWithRefreshToken: User = {
+        ...mockUser,
+        id: 5,
+        email: 'specific@example.com',
+        refreshToken: hashedRefreshToken,
+      };
+
+      mockUsersService.findById.mockResolvedValue(userWithRefreshToken);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      mockJwtService.sign.mockReturnValueOnce('access');
+      mockJwtService.sign.mockReturnValueOnce('refresh');
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed');
+      mockUsersService.updateRefreshToken.mockResolvedValue(undefined);
+
+      await service.refreshTokens(5, refreshToken);
+
+      const expectedPayload = {
+        email: 'specific@example.com',
+        sub: 5,
+      };
+
+      expect(jwtService.sign).toHaveBeenCalledWith(expectedPayload);
+    });
+  });
+
+  describe('logout', () => {
+    it('should successfully logout user and clear refresh token', async () => {
+      const userId = 1;
+      mockUsersService.updateRefreshToken.mockResolvedValue(undefined);
+
+      const result = await service.logout(userId);
+
+      expect(result).toEqual({ message: 'Выход выполнен успешно' });
+      expect(usersService.updateRefreshToken).toHaveBeenCalledWith(
+        userId,
+        null,
+      );
+    });
+
+    it('should handle logout for different user IDs', async () => {
+      const userId = 99;
+      mockUsersService.updateRefreshToken.mockResolvedValue(undefined);
+
+      await service.logout(userId);
+
+      expect(usersService.updateRefreshToken).toHaveBeenCalledWith(
+        userId,
+        null,
+      );
+    });
+
+    it('should handle database errors during logout', async () => {
+      const userId = 1;
+      mockUsersService.updateRefreshToken.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.logout(userId)).rejects.toThrow('Database error');
+      expect(usersService.updateRefreshToken).toHaveBeenCalledWith(
+        userId,
+        null,
+      );
     });
   });
 });

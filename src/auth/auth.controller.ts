@@ -1,8 +1,25 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { LoginUserDto, CreateUserDto } from '../users/dto/user.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+import { RefreshJwtAuthGuard } from './guards/refresh-jwt-auth.guard';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import type { AuthRequest } from './interfaces/auth-request.interface';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -33,6 +50,7 @@ export class AuthController {
     schema: {
       example: {
         access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        refresh_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         user: {
           id: 1,
           email: 'user@example.com',
@@ -89,5 +107,56 @@ export class AuthController {
         name: user.name,
       },
     };
+  }
+
+  @Post('refresh')
+  @UseGuards(RefreshJwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Обновление токена доступа',
+    description:
+      'Получение нового access token и refresh token используя действующий refresh token',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Токены успешно обновлены',
+    schema: {
+      example: {
+        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        refresh_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Неверный refresh token' })
+  @ApiResponse({ status: 500, description: 'Внутренняя ошибка сервера' })
+  async refresh(@Request() req: AuthRequest) {
+    const userId = req.user.sub;
+    const refreshToken = req.user.refreshToken as string;
+    return this.authService.refreshTokens(userId, refreshToken);
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Выход из системы',
+    description: 'Выход пользователя из системы и инвалидация refresh token',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Успешный выход',
+    schema: {
+      example: {
+        message: 'Выход выполнен успешно',
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Неавторизован' })
+  @ApiResponse({ status: 500, description: 'Внутренняя ошибка сервера' })
+  async logout(@Request() req: AuthRequest) {
+    const userId = req.user.sub;
+    return this.authService.logout(userId);
   }
 }
