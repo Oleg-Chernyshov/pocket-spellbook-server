@@ -106,7 +106,7 @@ describe('SpellsController (e2e)', () => {
 
     it('should filter spells by character class', () => {
       return request(app.getHttpServer())
-        .get('/spells?characterClass=Artificer')
+        .get('/spells?characterClass=1')
         .expect(200)
         .expect((res) => {
           expect(Array.isArray(res.body.data)).toBe(true);

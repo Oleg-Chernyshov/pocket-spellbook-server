@@ -57,7 +57,7 @@ export class CharactersService {
   ): Promise<Character> {
     const character = await this.charactersRepository.findOne({
       where: { id: characterId, userId },
-      relations: ['spells', 'characterClass', 'characterClass.spells'],
+      relations: ['spells', 'characterClass'],
     });
 
     if (!character) {
@@ -68,10 +68,6 @@ export class CharactersService {
 
     if (character.hasSpell(spell.id)) {
       return character;
-    }
-
-    if (!character.canLearnSpell(spell)) {
-      throw new NotFoundException('Заклинание недоступно для класса персонажа');
     }
 
     character.addSpell(spell);

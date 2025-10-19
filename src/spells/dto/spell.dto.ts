@@ -95,12 +95,13 @@ export class SpellFilterDto extends PaginationDto {
   search?: string;
 
   @ApiPropertyOptional({
-    description: 'Класс персонажа',
-    example: 'Wizard',
+    description: 'ID класса персонажа',
+    example: 9,
   })
   @IsOptional()
-  @IsString()
-  characterClass?: string;
+  @Type(() => Number)
+  @IsInt()
+  characterClass?: number;
 
   @ApiPropertyOptional({
     description: 'Язык локализации',

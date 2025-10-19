@@ -54,8 +54,8 @@ export class SpellsController {
   @ApiQuery({
     name: 'characterClass',
     required: false,
-    description: 'Класс персонажа',
-    example: 'Wizard',
+    description: 'ID класса персонажа',
+    example: 9,
   })
   @ApiQuery({
     name: 'language',

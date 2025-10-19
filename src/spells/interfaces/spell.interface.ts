@@ -58,7 +58,7 @@ export interface SpellFilter {
   source?: string;
   search?: string;
   language?: 'en' | 'ru';
-  characterClass?: string;
+  characterClass?: number;
   page?: number;
   limit?: number;
 }

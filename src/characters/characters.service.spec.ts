@@ -52,11 +52,6 @@ describe('CharactersService', () => {
       hasSpell: jest.fn(function (this: Character, spellId: number) {
         return (this.spells || []).some((s) => s.id === spellId);
       }),
-      canLearnSpell: jest
-        .fn(function (this: Character, spell: Spell) {
-          return this.characterClass?.hasSpell(spell.id) ?? false;
-        })
-        .mockReturnValue(true),
     }) as unknown as Character;
 
   const mockSpell: Spell = {
@@ -205,17 +200,6 @@ describe('CharactersService', () => {
       await expect(service.addSpell(1, { spellId: 999 }, 10)).rejects.toThrow(
         NotFoundException,
       );
-    });
-
-    it('should throw if class cannot learn the spell', async () => {
-      const entity = mockCharacter({ withRelations: true });
-      (entity.canLearnSpell as jest.Mock).mockReturnValue(false);
-      (charactersRepository.findOne as jest.Mock).mockResolvedValue(entity);
-      (spellsRepository.findOne as jest.Mock).mockResolvedValue(mockSpell);
-
-      await expect(
-        service.addSpell(1, { spellId: mockSpell.id }, 10),
-      ).rejects.toThrow(NotFoundException);
     });
   });
 

@@ -107,9 +107,8 @@ export class SpellsService {
     if (filters?.characterClass) {
       queryBuilder
         .innerJoin('character_class_spells', 'ccs', 'ccs.spell_id = spell.id')
-        .innerJoin('character_classes', 'cc', 'cc.id = ccs.character_class_id')
-        .andWhere('(cc.title_en = :className OR cc.title_ru = :className)', {
-          className: filters.characterClass,
+        .andWhere('ccs.character_class_id = :classId', {
+          classId: filters.characterClass,
         });
     }
 

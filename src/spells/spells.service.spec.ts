@@ -235,7 +235,7 @@ describe('SpellsService', () => {
       mockQueryBuilder.getMany.mockResolvedValue(mockSpells);
       mockQueryBuilder.getCount.mockResolvedValue(2);
 
-      const result = await service.findAll({ characterClass: 'Artificer' });
+      const result = await service.findAll({ characterClass: 1 });
 
       expect(result.data).toHaveLength(2);
       expect(mockQueryBuilder.innerJoin).toHaveBeenCalledWith(
@@ -243,14 +243,9 @@ describe('SpellsService', () => {
         'ccs',
         'ccs.spell_id = spell.id',
       );
-      expect(mockQueryBuilder.innerJoin).toHaveBeenCalledWith(
-        'character_classes',
-        'cc',
-        'cc.id = ccs.character_class_id',
-      );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        '(cc.title_en = :className OR cc.title_ru = :className)',
-        { className: 'Artificer' },
+        'ccs.character_class_id = :classId',
+        { classId: 1 },
       );
     });
 
@@ -258,7 +253,7 @@ describe('SpellsService', () => {
       mockQueryBuilder.getMany.mockResolvedValue([]);
       mockQueryBuilder.getCount.mockResolvedValue(0);
 
-      const result = await service.findAll({ characterClass: 'EmptyClass' });
+      const result = await service.findAll({ characterClass: 999 });
 
       expect(result.data).toHaveLength(0);
       expect(mockQueryBuilder.innerJoin).toHaveBeenCalled();
@@ -269,7 +264,7 @@ describe('SpellsService', () => {
       mockQueryBuilder.getCount.mockResolvedValue(0);
 
       const result = await service.findAll({
-        characterClass: 'NonExistentClass',
+        characterClass: 9999,
       });
 
       expect(result.data).toHaveLength(0);
@@ -488,7 +483,7 @@ describe('SpellsService', () => {
       );
       mockQueryBuilder.getCount.mockResolvedValue(10);
 
-      const result = await service.count({ characterClass: 'Artificer' });
+      const result = await service.count({ characterClass: 1 });
 
       expect(result).toBe(10);
     });

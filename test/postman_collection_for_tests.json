@@ -128,7 +128,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/spells?page=1&limit=20&level=3&school=Evocation&search=fire&characterClass=Wizard&language=en&source=PHB",
+              "raw": "{{baseUrl}}/spells?page=1&limit=20&level=3&school=Evocation&search=fire&characterClass=9&language=en&source=PHB",
               "host": ["{{baseUrl}}"],
               "path": ["spells"],
               "query": [
@@ -137,7 +137,7 @@
                 { "key": "level", "value": "3" },
                 { "key": "school", "value": "Evocation" },
                 { "key": "search", "value": "fire" },
-                { "key": "characterClass", "value": "Wizard" },
+                { "key": "characterClass", "value": "9" },
                 { "key": "language", "value": "en" },
                 { "key": "source", "value": "PHB" }
               ]
