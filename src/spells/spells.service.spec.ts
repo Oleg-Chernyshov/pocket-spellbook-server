@@ -79,6 +79,7 @@ describe('SpellsService', () => {
   const mockCharacterClassRepository = {
     findOne: jest.fn(),
     createQueryBuilder: jest.fn(),
+    find: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -670,6 +671,112 @@ describe('SpellsService', () => {
       expect(result?.name).toBe('Кислотные брызги');
       expect(result?.school).toBe('призыв');
       expect(result?.text).toBe('Русский текст');
+    });
+  });
+
+  describe('getAllCharacterClasses', () => {
+    it('should return all character classes in English', async () => {
+      const mockClasses = [
+        {
+          id: 1,
+          titleEn: 'Artificer',
+          titleRu: 'Изобретатель',
+          hasSpells: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 2,
+          titleEn: 'Bard',
+          titleRu: 'Бард',
+          hasSpells: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+      mockCharacterClassRepository.find.mockResolvedValue(mockClasses);
+
+      const result = await service.getAllCharacterClasses('en');
+
+      expect(result).toEqual([
+        {
+          id: 1,
+          title: 'Artificer',
+          titleEn: 'Artificer',
+          titleRu: 'Изобретатель',
+          hasSpells: 1,
+        },
+        {
+          id: 2,
+          title: 'Bard',
+          titleEn: 'Bard',
+          titleRu: 'Бард',
+          hasSpells: 1,
+        },
+      ]);
+      expect(mockCharacterClassRepository.find).toHaveBeenCalledWith({
+        order: { id: 'ASC' },
+      });
+    });
+
+    it('should return all character classes in Russian', async () => {
+      const mockClasses = [
+        {
+          id: 1,
+          titleEn: 'Artificer',
+          titleRu: 'Изобретатель',
+          hasSpells: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 9,
+          titleEn: 'Wizard',
+          titleRu: 'Волшебник',
+          hasSpells: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+      mockCharacterClassRepository.find.mockResolvedValue(mockClasses);
+
+      const result = await service.getAllCharacterClasses('ru');
+
+      expect(result).toEqual([
+        {
+          id: 1,
+          title: 'Изобретатель',
+          titleEn: 'Artificer',
+          titleRu: 'Изобретатель',
+          hasSpells: 1,
+        },
+        {
+          id: 9,
+          title: 'Волшебник',
+          titleEn: 'Wizard',
+          titleRu: 'Волшебник',
+          hasSpells: 1,
+        },
+      ]);
+    });
+
+    it('should return classes in English by default', async () => {
+      const mockClasses = [
+        {
+          id: 1,
+          titleEn: 'Artificer',
+          titleRu: 'Изобретатель',
+          hasSpells: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+      mockCharacterClassRepository.find.mockResolvedValue(mockClasses);
+
+      const result = await service.getAllCharacterClasses();
+
+      expect(result[0].title).toBe('Artificer');
+      expect(result[0].hasSpells).toBe(1);
     });
   });
 });

@@ -251,4 +251,18 @@ export class SpellsService {
       bySchool,
     };
   }
+
+  async getAllCharacterClasses(language: 'en' | 'ru' = 'en') {
+    const classes = await this.characterClassRepository.find({
+      order: { id: 'ASC' },
+    });
+
+    return classes.map((cls) => ({
+      id: cls.id,
+      title: language === 'ru' ? cls.titleRu : cls.titleEn,
+      titleEn: cls.titleEn,
+      titleRu: cls.titleRu,
+      hasSpells: cls.hasSpells,
+    }));
+  }
 }

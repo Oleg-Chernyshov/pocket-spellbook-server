@@ -22,6 +22,9 @@ export class CharacterClass {
   @Column({ name: 'title_ru', type: 'varchar', length: 100 })
   titleRu: string;
 
+  @Column({ name: 'has_spells', type: 'tinyint', default: 1 })
+  hasSpells: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

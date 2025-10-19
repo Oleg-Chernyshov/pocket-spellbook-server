@@ -177,4 +177,45 @@ describe('SpellsController (e2e)', () => {
       return request(app.getHttpServer()).get('/spells/999').expect(404);
     });
   });
+
+  describe('/spells/classes (GET)', () => {
+    it('should return all character classes', () => {
+      return request(app.getHttpServer())
+        .get('/spells/classes')
+        .expect(200)
+        .expect((res) => {
+          expect(Array.isArray(res.body)).toBe(true);
+          expect(res.body.length).toBeGreaterThan(0);
+          expect(res.body[0]).toHaveProperty('id');
+          expect(res.body[0]).toHaveProperty('title');
+          expect(res.body[0]).toHaveProperty('titleEn');
+          expect(res.body[0]).toHaveProperty('titleRu');
+          expect(res.body[0]).toHaveProperty('hasSpells');
+        });
+    });
+
+    it('should return character classes in English', () => {
+      return request(app.getHttpServer())
+        .get('/spells/classes?language=en')
+        .expect(200)
+        .expect((res) => {
+          expect(Array.isArray(res.body)).toBe(true);
+          if (res.body.length > 0) {
+            expect(res.body[0].title).toBe(res.body[0].titleEn);
+          }
+        });
+    });
+
+    it('should return character classes in Russian', () => {
+      return request(app.getHttpServer())
+        .get('/spells/classes?language=ru')
+        .expect(200)
+        .expect((res) => {
+          expect(Array.isArray(res.body)).toBe(true);
+          if (res.body.length > 0) {
+            expect(res.body[0].title).toBe(res.body[0].titleRu);
+          }
+        });
+    });
+  });
 });

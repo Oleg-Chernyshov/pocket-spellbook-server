@@ -108,12 +108,12 @@ export class SpellsController {
     return this.spellsService.findAll(filters);
   }
 
-  @Get(':id')
+  @Get('classes')
   @ApiOperation({
-    summary: 'Получить заклинание по ID',
-    description: 'Возвращает заклинание с указанным ID в указанном языке',
+    summary: 'Получить список всех классов персонажей',
+    description:
+      'Возвращает список всех доступных классов персонажей с их ID и названиями для использования в фильтрах',
   })
-  @ApiParam({ name: 'id', description: 'ID заклинания', example: 1 })
   @ApiQuery({
     name: 'language',
     required: false,
@@ -123,29 +123,36 @@ export class SpellsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Заклинание успешно получено',
+    description: 'Список классов персонажей успешно получен',
     schema: {
-      example: {
-        id: 1,
-        name: 'Fireball',
-        level: '3',
-        school: 'Evocation',
-        text: 'A bright streak flashes from your pointing finger...',
-        castingTime: '1 action',
-        range: '150 feet',
-        components: 'V, S, M',
-        duration: 'Instantaneous',
-        source: 'PHB',
-      },
+      example: [
+        {
+          id: 1,
+          title: 'Artificer',
+          titleEn: 'Artificer',
+          titleRu: 'Изобретатель',
+          hasSpells: 1,
+        },
+        {
+          id: 2,
+          title: 'Bard',
+          titleEn: 'Bard',
+          titleRu: 'Бард',
+          hasSpells: 1,
+        },
+        {
+          id: 9,
+          title: 'Wizard',
+          titleEn: 'Wizard',
+          titleRu: 'Волшебник',
+          hasSpells: 1,
+        },
+      ],
     },
   })
-  @ApiResponse({ status: 404, description: 'Заклинание не найдено' })
   @ApiResponse({ status: 500, description: 'Внутренняя ошибка сервера' })
-  async findOne(
-    @Param('id') id: string,
-    @Query('language') language?: 'en' | 'ru',
-  ): Promise<LocalizedSpell | null> {
-    return this.spellsService.findOne(+id, language);
+  async getAllCharacterClasses(@Query('language') language?: 'en' | 'ru') {
+    return this.spellsService.getAllCharacterClasses(language);
   }
 
   @Get('class/:classId/stats')
@@ -190,5 +197,45 @@ export class SpellsController {
   @ApiResponse({ status: 500, description: 'Внутренняя ошибка сервера' })
   async getClassSpellsStats(@Param('classId') classId: string) {
     return this.spellsService.getClassSpellsStats(+classId);
+  }
+
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Получить заклинание по ID',
+    description: 'Возвращает заклинание с указанным ID в указанном языке',
+  })
+  @ApiParam({ name: 'id', description: 'ID заклинания', example: 1 })
+  @ApiQuery({
+    name: 'language',
+    required: false,
+    description: 'Язык локализации',
+    example: 'en',
+    enum: ['en', 'ru'],
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Заклинание успешно получено',
+    schema: {
+      example: {
+        id: 1,
+        name: 'Fireball',
+        level: '3',
+        school: 'Evocation',
+        text: 'A bright streak flashes from your pointing finger...',
+        castingTime: '1 action',
+        range: '150 feet',
+        components: 'V, S, M',
+        duration: 'Instantaneous',
+        source: 'PHB',
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Заклинание не найдено' })
+  @ApiResponse({ status: 500, description: 'Внутренняя ошибка сервера' })
+  async findOne(
+    @Param('id') id: string,
+    @Query('language') language?: 'en' | 'ru',
+  ): Promise<LocalizedSpell | null> {
+    return this.spellsService.findOne(+id, language);
   }
 }
