@@ -1,13 +1,14 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Param,
-  Put,
+  Controller,
   Delete,
-  UseGuards,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
   Request,
+  UseGuards,
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { CharactersService } from './characters.service';
@@ -21,6 +22,7 @@ import {
   ApiBody,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { SpellsService } from '../spells/spells.service';
 
 interface AuthenticatedRequest extends ExpressRequest {
   user: {
@@ -34,7 +36,10 @@ interface AuthenticatedRequest extends ExpressRequest {
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
 export class CharactersController {
-  constructor(private readonly charactersService: CharactersService) {}
+  constructor(
+    private readonly charactersService: CharactersService,
+    private readonly spellsService: SpellsService,
+  ) {}
 
   @Post()
   @ApiOperation({
@@ -241,9 +246,13 @@ export class CharactersController {
   async getCharacterSpells(
     @Param('id') id: string,
     @Request() req: AuthenticatedRequest,
+    @Query('language') language?: 'en' | 'ru',
   ) {
+    // Проверяем, что персонаж принадлежит текущему пользователю
     const character = await this.charactersService.findOne(+id, req.user.id);
-    return character.spells || [];
+    const lang = language || 'en';
+
+    return this.spellsService.getCharacterSpells(character.id, lang);
   }
 
   @Post(':id/spells/:spellId')

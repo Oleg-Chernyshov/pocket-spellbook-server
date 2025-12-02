@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { CharactersModule } from './characters/characters.module';
 import { User } from './users/entities/user.entity';
 import { Spell } from './spells/entities/spell.entity';
+import { SpellTranslation } from './spells/entities/spell-translation.entity';
 import { CharacterClass } from './spells/entities/character-class.entity';
 import { Character } from './characters/entities/character.entity';
 
@@ -30,7 +31,7 @@ import { Character } from './characters/entities/character.entity';
             configService.get<string>('DB_PASSWORD') ??
             configService.get<string>('DB_ROOT_PASSWORD', ''),
           database: configService.get<string>('DB_DATABASE', 'pocket_spellbook'),
-          entities: [User, Spell, CharacterClass, Character],
+          entities: [User, Spell, SpellTranslation, CharacterClass, Character],
           synchronize: configService.get<string>('NODE_ENV') !== 'production',
           logging: configService.get<string>('NODE_ENV') === 'development',
         };

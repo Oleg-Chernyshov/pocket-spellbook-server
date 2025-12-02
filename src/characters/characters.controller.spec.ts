@@ -1,11 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CharactersController } from './characters.controller';
 import { CharactersService } from './characters.service';
+import { SpellsService } from '../spells/spells.service';
 import { CreateCharacterDto, UpdateCharacterDto } from './dto/character.dto';
 
 describe('CharactersController', () => {
   let controller: CharactersController;
   let service: CharactersService;
+  let spellsService: SpellsService;
 
   const mockCharactersService = {
     create: jest.fn(),
@@ -17,6 +19,10 @@ describe('CharactersController', () => {
     removeSpell: jest.fn(),
   };
 
+  const mockSpellsService = {
+    getCharacterSpells: jest.fn(),
+  };
+
   type ReqType = Parameters<CharactersController['create']>[1];
   const mockReq = (userId: number): ReqType =>
     ({ user: { id: userId, email: 'u@e.com' } }) as unknown as ReqType;
@@ -26,11 +32,13 @@ describe('CharactersController', () => {
       controllers: [CharactersController],
       providers: [
         { provide: CharactersService, useValue: mockCharactersService },
+        { provide: SpellsService, useValue: mockSpellsService },
       ],
     }).compile();
 
     controller = module.get<CharactersController>(CharactersController);
     service = module.get<CharactersService>(CharactersService);
+    spellsService = module.get<SpellsService>(SpellsService);
 
     jest.clearAllMocks();
   });
@@ -105,14 +113,38 @@ describe('CharactersController', () => {
   });
 
   describe('getCharacterSpells', () => {
-    it('should return spells of character', async () => {
+    it('should return localized spells of character with default language', async () => {
       (service.findOne as jest.Mock).mockResolvedValue({
         id: 1,
-        spells: [{ id: 5 }],
       });
+      (spellsService.getCharacterSpells as jest.Mock).mockResolvedValue([
+        { id: 5 },
+      ]);
+
       const result = await controller.getCharacterSpells('1', mockReq(10));
-      expect(result).toEqual([{ id: 5 }]);
+
       expect(service.findOne).toHaveBeenCalledWith(1, 10);
+      expect(spellsService.getCharacterSpells).toHaveBeenCalledWith(1, 'en');
+      expect(result).toEqual([{ id: 5 }]);
+    });
+
+    it('should pass language to spells service', async () => {
+      (service.findOne as jest.Mock).mockResolvedValue({
+        id: 2,
+      });
+      (spellsService.getCharacterSpells as jest.Mock).mockResolvedValue([
+        { id: 7 },
+      ]);
+
+      const result = await controller.getCharacterSpells(
+        '2',
+        mockReq(10),
+        'ru',
+      );
+
+      expect(service.findOne).toHaveBeenCalledWith(2, 10);
+      expect(spellsService.getCharacterSpells).toHaveBeenCalledWith(2, 'ru');
+      expect(result).toEqual([{ id: 7 }]);
     });
   });
 

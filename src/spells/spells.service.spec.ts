@@ -2,16 +2,19 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { SpellsService } from './spells.service';
 import { Spell } from './entities/spell.entity';
+import { SpellTranslation } from './entities/spell-translation.entity';
 import { CharacterClass } from './entities/character-class.entity';
 
 interface MockQueryBuilder {
   andWhere: jest.Mock;
   where: jest.Mock;
   getMany: jest.Mock;
+  getManyAndCount: jest.Mock;
   getCount: jest.Mock;
   skip: jest.Mock;
   take: jest.Mock;
   orderBy: jest.Mock;
+  innerJoinAndSelect: jest.Mock;
   innerJoin: jest.Mock;
   addOrderBy: jest.Mock;
   insert: jest.Mock;
@@ -23,41 +26,91 @@ describe('SpellsService', () => {
 
   let mockQueryBuilder: MockQueryBuilder;
 
-  const mockSpell: Spell = {
+  const mockTranslationEn: SpellTranslation = {
     id: 1,
-    nameEn: 'Acid Splash',
-    nameRu: 'Кислотные брызги',
-    level: '0',
-    textEn: 'English text',
-    textRu: 'Русский текст',
-    schoolEn: 'Conjuration',
-    schoolRu: 'призыв',
-    castingTimeEn: '1 action',
-    castingTimeRu: '1 действие',
-    rangeEn: '60 feet',
-    rangeRu: '60 футов',
-    materialsEn: '',
-    materialsRu: '',
-    componentsEn: 'V, S',
-    componentsRu: 'В, С',
-    durationEn: 'Instantaneous',
-    durationRu: 'мгновенно',
-    sourceEn: 'PHB',
-    sourceRu: 'PHB',
+    spellId: 1,
+    language: 'en',
+    name: 'Acid Splash',
+    text: 'English text',
+    school: 'Conjuration',
+    castingTime: '1 action',
+    range: '60 feet',
+    materials: '',
+    components: 'V, S',
+    duration: 'Instantaneous',
+    source: 'PHB',
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
+  } as SpellTranslation;
+
+  const mockTranslationRu: SpellTranslation = {
+    id: 2,
+    spellId: 1,
+    language: 'ru',
+    name: 'Кислотные брызги',
+    text: 'Русский текст',
+    school: 'призыв',
+    castingTime: '1 действие',
+    range: '60 футов',
+    materials: '',
+    components: 'В, С',
+    duration: 'мгновенно',
+    source: 'PHB',
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  } as SpellTranslation;
+
+  const mockSpell: Spell = {
+    id: 1,
+    level: '0',
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+    translations: [mockTranslationEn, mockTranslationRu],
   } as Spell;
+
+  const mockSpell2Translations: SpellTranslation[] = [
+    {
+      id: 3,
+      spellId: 2,
+      language: 'en',
+      name: 'Fireball',
+      text: 'English text',
+      school: 'Evocation',
+      castingTime: '1 action',
+      range: '60 feet',
+      materials: '',
+      components: 'V, S',
+      duration: 'Instantaneous',
+      source: 'PHB',
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+    } as SpellTranslation,
+    {
+      id: 4,
+      spellId: 2,
+      language: 'ru',
+      name: 'Огненный шар',
+      text: 'Русский текст',
+      school: 'воплощение',
+      castingTime: '1 действие',
+      range: '60 футов',
+      materials: '',
+      components: 'В, С',
+      duration: 'мгновенно',
+      source: 'PHB',
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+    } as SpellTranslation,
+  ];
 
   const mockSpells: Spell[] = [
     mockSpell,
     {
-      ...mockSpell,
       id: 2,
-      nameEn: 'Fireball',
-      nameRu: 'Огненный шар',
       level: '3',
-      schoolEn: 'Evocation',
-      schoolRu: 'воплощение',
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+      translations: mockSpell2Translations,
     } as Spell,
   ];
 
@@ -76,6 +129,8 @@ describe('SpellsService', () => {
     find: jest.fn(),
   };
 
+  const mockSpellTranslationRepository = {};
+
   const mockCharacterClassRepository = {
     findOne: jest.fn(),
     createQueryBuilder: jest.fn(),
@@ -87,10 +142,12 @@ describe('SpellsService', () => {
       andWhere: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       getMany: jest.fn().mockResolvedValue([]),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
       getCount: jest.fn().mockResolvedValue(0),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
+      innerJoinAndSelect: jest.fn().mockReturnThis(),
       innerJoin: jest.fn().mockReturnThis(),
       addOrderBy: jest.fn().mockReturnThis(),
       insert: jest.fn().mockReturnThis(),
@@ -112,6 +169,10 @@ describe('SpellsService', () => {
           useValue: mockSpellRepository,
         },
         {
+          provide: getRepositoryToken(SpellTranslation),
+          useValue: mockSpellTranslationRepository,
+        },
+        {
           provide: getRepositoryToken(CharacterClass),
           useValue: mockCharacterClassRepository,
         },
@@ -131,21 +192,19 @@ describe('SpellsService', () => {
 
   describe('findAll', () => {
     it('should return all spells when no filters provided', async () => {
-      mockQueryBuilder.getMany.mockResolvedValue(mockSpells);
-      mockQueryBuilder.getCount.mockResolvedValue(2);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([mockSpells, 2]);
 
       const result = await service.findAll();
 
       expect(result.data).toHaveLength(2);
       expect(result.data[0].name).toBe('Acid Splash');
       expect(result.data[1].name).toBe('Fireball');
-      expect(mockQueryBuilder.getMany).toHaveBeenCalled();
+      expect(mockQueryBuilder.getManyAndCount).toHaveBeenCalled();
     });
 
     it('should filter by level', async () => {
       const level3Spells = mockSpells.filter((s) => s.level === '3');
-      mockQueryBuilder.getMany.mockResolvedValue(level3Spells);
-      mockQueryBuilder.getCount.mockResolvedValue(1);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([level3Spells, 1]);
 
       const result = await service.findAll({ level: '3' });
 
@@ -159,10 +218,15 @@ describe('SpellsService', () => {
 
     it('should filter by school in English', async () => {
       const conjurationSpells = mockSpells.filter(
-        (s) => s.schoolEn === 'Conjuration',
+        (s) =>
+          s.translations?.some(
+            (t) => t.language === 'en' && t.school === 'Conjuration',
+          ),
       );
-      mockQueryBuilder.getMany.mockResolvedValue(conjurationSpells);
-      mockQueryBuilder.getCount.mockResolvedValue(1);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([
+        conjurationSpells,
+        1,
+      ]);
 
       const result = await service.findAll({
         school: 'Conjuration',
@@ -172,17 +236,30 @@ describe('SpellsService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0].school).toBe('Conjuration');
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'spell.schoolEn = :school',
+        'translation.school = :school',
         { school: 'Conjuration' },
       );
     });
 
     it('should filter by school in Russian', async () => {
-      const conjurationSpells = mockSpells.filter(
-        (s) => s.schoolRu === 'призыв',
-      );
-      mockQueryBuilder.getMany.mockResolvedValue(conjurationSpells);
-      mockQueryBuilder.getCount.mockResolvedValue(1);
+      const conjurationSpells = mockSpells
+        .filter((s) =>
+          s.translations?.some(
+            (t) => t.language === 'ru' && t.school === 'призыв',
+          ),
+        )
+        .map(
+          (s) =>
+            ({
+              ...s,
+              translations:
+                s.translations?.filter((t) => t.language === 'ru') || [],
+            }) as Spell,
+        );
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([
+        conjurationSpells,
+        1,
+      ]);
 
       const result = await service.findAll({
         school: 'призыв',
@@ -192,32 +269,45 @@ describe('SpellsService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0].school).toBe('призыв');
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'spell.schoolRu = :school',
+        'translation.school = :school',
         { school: 'призыв' },
       );
     });
 
     it('should filter by search term in English', async () => {
-      const searchResults = mockSpells.filter((s) => s.nameEn.includes('Acid'));
-      mockQueryBuilder.getMany.mockResolvedValue(searchResults);
-      mockQueryBuilder.getCount.mockResolvedValue(1);
+      const searchResults = mockSpells.filter((s) =>
+        s.translations?.some(
+          (t) => t.language === 'en' && t.name.includes('Acid'),
+        ),
+      );
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([searchResults, 1]);
 
       const result = await service.findAll({ search: 'Acid', language: 'en' });
 
       expect(result.data).toHaveLength(1);
       expect(result.data[0].name).toBe('Acid Splash');
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'MATCH(spell.name_en, spell.text_en) AGAINST(:search IN BOOLEAN MODE)',
+        'MATCH(translation.name, translation.text) AGAINST(:search IN BOOLEAN MODE)',
         { search: 'Acid*' },
       );
     });
 
     it('should filter by search term in Russian', async () => {
-      const searchResults = mockSpells.filter((s) =>
-        s.nameRu.includes('Огненный'),
-      );
-      mockQueryBuilder.getMany.mockResolvedValue(searchResults);
-      mockQueryBuilder.getCount.mockResolvedValue(1);
+      const searchResults = mockSpells
+        .filter((s) =>
+          s.translations?.some(
+            (t) => t.language === 'ru' && t.name.includes('Огненный'),
+          ),
+        )
+        .map(
+          (s) =>
+            ({
+              ...s,
+              translations:
+                s.translations?.filter((t) => t.language === 'ru') || [],
+            }) as Spell,
+        );
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([searchResults, 1]);
 
       const result = await service.findAll({
         search: 'Огненный',
@@ -227,14 +317,13 @@ describe('SpellsService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0].name).toBe('Огненный шар');
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'MATCH(spell.name_ru, spell.text_ru) AGAINST(:search IN BOOLEAN MODE)',
+        'MATCH(translation.name, translation.text) AGAINST(:search IN BOOLEAN MODE)',
         { search: 'Огненный*' },
       );
     });
 
     it('should filter by character class', async () => {
-      mockQueryBuilder.getMany.mockResolvedValue(mockSpells);
-      mockQueryBuilder.getCount.mockResolvedValue(2);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([mockSpells, 2]);
 
       const result = await service.findAll({ characterClass: 1 });
 
@@ -252,7 +341,7 @@ describe('SpellsService', () => {
 
     it('should handle character class with no spells', async () => {
       mockQueryBuilder.getMany.mockResolvedValue([]);
-      mockQueryBuilder.getCount.mockResolvedValue(0);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       const result = await service.findAll({ characterClass: 999 });
 
@@ -262,7 +351,7 @@ describe('SpellsService', () => {
 
     it('should handle non-existent character class', async () => {
       mockQueryBuilder.getMany.mockResolvedValue([]);
-      mockQueryBuilder.getCount.mockResolvedValue(0);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       const result = await service.findAll({
         characterClass: 9999,
@@ -273,8 +362,7 @@ describe('SpellsService', () => {
     });
 
     it('should combine multiple filters', async () => {
-      mockQueryBuilder.getMany.mockResolvedValue([mockSpells[0]]);
-      mockQueryBuilder.getCount.mockResolvedValue(1);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[mockSpells[0]], 1]);
 
       const result = await service.findAll({
         level: '0',
@@ -289,13 +377,13 @@ describe('SpellsService', () => {
         { level: '0' },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'spell.schoolEn = :school',
+        'translation.school = :school',
         { school: 'Conjuration' },
       );
     });
 
     it('should use English as default language', async () => {
-      mockQueryBuilder.getMany.mockResolvedValue(mockSpells);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([mockSpells, 2]);
 
       const result = await service.findAll();
 
@@ -306,59 +394,12 @@ describe('SpellsService', () => {
 
   describe('pagination', () => {
     it('should return paginated results with default values', async () => {
-      const mockSpells = [
-        {
-          id: 1,
-          nameEn: 'Acid Splash',
-          nameRu: 'Кислотные брызги',
-          level: '0',
-          textEn: 'English text',
-          textRu: 'Русский текст',
-          schoolEn: 'Conjuration',
-          schoolRu: 'призыв',
-          castingTimeEn: '1 action',
-          castingTimeRu: '1 действие',
-          rangeEn: '60 feet',
-          rangeRu: '60 футов',
-          materialsEn: '',
-          materialsRu: '',
-          componentsEn: 'V, S',
-          componentsRu: 'В, С',
-          durationEn: 'Instantaneous',
-          durationRu: 'мгновенно',
-          sourceEn: 'PHB',
-          sourceRu: 'PHB',
-          createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2024-01-01'),
-        },
-        {
-          id: 2,
-          nameEn: 'Fireball',
-          nameRu: 'Огненный шар',
-          level: '3',
-          textEn: 'English text',
-          textRu: 'Русский текст',
-          schoolEn: 'Evocation',
-          schoolRu: 'воплощение',
-          castingTimeEn: '1 action',
-          castingTimeRu: '1 действие',
-          rangeEn: '60 feet',
-          rangeRu: '60 футов',
-          materialsEn: '',
-          materialsRu: '',
-          componentsEn: 'V, S',
-          componentsRu: 'В, С',
-          durationEn: 'Instantaneous',
-          durationRu: 'мгновенно',
-          sourceEn: 'PHB',
-          sourceRu: 'PHB',
-          createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2024-01-01'),
-        },
-      ];
+      const paginatedSpells = mockSpells;
 
-      mockQueryBuilder.getMany.mockResolvedValue(mockSpells);
-      mockQueryBuilder.getCount.mockResolvedValue(100);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([
+        paginatedSpells,
+        100,
+      ]);
 
       const result = await service.findAll({ page: 1, limit: 20 });
 
@@ -374,35 +415,12 @@ describe('SpellsService', () => {
     });
 
     it('should return paginated results with custom page and limit', async () => {
-      const mockSpells = [
-        {
-          id: 3,
-          nameEn: 'Lightning Bolt',
-          nameRu: 'Молния',
-          level: '3',
-          textEn: 'English text',
-          textRu: 'Русский текст',
-          schoolEn: 'Evocation',
-          schoolRu: 'воплощение',
-          castingTimeEn: '1 action',
-          castingTimeRu: '1 действие',
-          rangeEn: '120 feet',
-          rangeRu: '120 футов',
-          materialsEn: '',
-          materialsRu: '',
-          componentsEn: 'V, S',
-          componentsRu: 'В, С',
-          durationEn: 'Instantaneous',
-          durationRu: 'мгновенно',
-          sourceEn: 'PHB',
-          sourceRu: 'PHB',
-          createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2024-01-01'),
-        },
-      ];
+      const customPageSpells = [mockSpells[1]];
 
-      mockQueryBuilder.getMany.mockResolvedValue(mockSpells);
-      mockQueryBuilder.getCount.mockResolvedValue(50);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([
+        customPageSpells,
+        50,
+      ]);
 
       const result = await service.findAll({ page: 3, limit: 10 });
 
@@ -418,35 +436,12 @@ describe('SpellsService', () => {
     });
 
     it('should handle last page correctly', async () => {
-      const mockSpells = [
-        {
-          id: 99,
-          nameEn: 'Wish',
-          nameRu: 'Желание',
-          level: '9',
-          textEn: 'English text',
-          textRu: 'Русский текст',
-          schoolEn: 'Evocation',
-          schoolRu: 'воплощение',
-          castingTimeEn: '1 action',
-          castingTimeRu: '1 действие',
-          rangeEn: 'Self',
-          rangeRu: 'Само',
-          materialsEn: '',
-          materialsRu: '',
-          componentsEn: 'V, S, M',
-          componentsRu: 'В, С, М',
-          durationEn: 'Instantaneous',
-          durationRu: 'мгновенно',
-          sourceEn: 'PHB',
-          sourceRu: 'PHB',
-          createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2024-01-01'),
-        },
-      ];
+      const lastPageSpells = [mockSpells[1]];
 
-      mockQueryBuilder.getMany.mockResolvedValue(mockSpells);
-      mockQueryBuilder.getCount.mockResolvedValue(100);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([
+        lastPageSpells,
+        100,
+      ]);
 
       const result = await service.findAll({ page: 5, limit: 20 });
 
@@ -513,6 +508,7 @@ describe('SpellsService', () => {
       });
       expect(mockSpellRepository.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
+        relations: ['translations'],
       });
     });
 
@@ -546,6 +542,7 @@ describe('SpellsService', () => {
       expect(result).toBeNull();
       expect(mockSpellRepository.findOne).toHaveBeenCalledWith({
         where: { id: 999 },
+        relations: ['translations'],
       });
     });
 

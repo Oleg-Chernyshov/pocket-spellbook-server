@@ -77,10 +77,15 @@ export class CharacterClass {
     if (!this.spells) return [];
 
     return this.spells.filter((spell) => {
-      if (language === 'ru') {
-        return spell.schoolRu === school;
+      if (!spell.translations || spell.translations.length === 0) {
+        return false;
       }
-      return spell.schoolEn === school;
+
+      const translation =
+        spell.translations.find((t) => t.language === language) ||
+        spell.translations[0];
+
+      return translation?.school === school;
     });
   }
 
@@ -119,7 +124,13 @@ export class CharacterClass {
 
     this.spells.forEach((spell) => {
       byLevel[spell.level] = (byLevel[spell.level] || 0) + 1;
-      bySchool[spell.schoolEn] = (bySchool[spell.schoolEn] || 0) + 1;
+
+      if (spell.translations && spell.translations.length > 0) {
+        const translation = spell.translations[0];
+        if (translation.school) {
+          bySchool[translation.school] = (bySchool[translation.school] || 0) + 1;
+        }
+      }
     });
 
     return {

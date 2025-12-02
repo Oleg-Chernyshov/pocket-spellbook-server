@@ -292,7 +292,7 @@ JWT_SECRET=your_jwt_secret_key
 - `GET /characters/:id` - Персонаж по ID
 - `PUT /characters/:id` - Обновить персонажа
 - `DELETE /characters/:id` - Удалить персонажа
-- `GET /characters/:id/spells` - Заклинания персонажа
+- `GET /characters/:id/spells` - Локализованный список заклинаний персонажа
 - `POST /characters/:id/spells/:spellId` - Изучить заклинание
 - `DELETE /characters/:id/spells/:spellId` - Забыть заклинание
 
@@ -319,6 +319,9 @@ GET /spells/search/fulltext?query=fire
 
 # Заклинания для класса Wizard на русском языке
 GET /spells?characterClass=wizard&language=ru
+
+# Заклинания конкретного персонажа на русском языке
+GET /characters/1/spells?language=ru
 
 # Пагинация с фильтрацией
 GET /spells?level=1&page=2&limit=10

@@ -17,7 +17,9 @@ CREATE TABLE users (
     INDEX idx_users_created_at (created_at)
 );
 
--- Таблица заклинаний
+-- Таблица заклинаний (историческая структура с двуязычными полями)
+-- Обратите внимание: новая версия приложения использует только level/created_at/updated_at
+-- и таблицу spell_translations. Для миграции данных используйте scripts/migrations/001_add_spell_translations.sql
 CREATE TABLE spells (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name_en VARCHAR(255) NOT NULL,
@@ -65,6 +67,32 @@ CREATE TABLE spells (
     -- Составные полнотекстовые индексы для комбинированного поиска
     FULLTEXT INDEX ft_spells_name_text_en (name_en, text_en),
     FULLTEXT INDEX ft_spells_name_text_ru (name_ru, text_ru)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Таблица переводов заклинаний
+CREATE TABLE IF NOT EXISTS spell_translations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    spell_id INT NOT NULL,
+    language VARCHAR(5) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    text TEXT NOT NULL,
+    school VARCHAR(100) NOT NULL,
+    casting_time VARCHAR(100) NOT NULL,
+    range VARCHAR(100) NOT NULL,
+    materials TEXT NULL,
+    components VARCHAR(100) NOT NULL,
+    duration VARCHAR(100) NOT NULL,
+    source VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    CONSTRAINT fk_spell_translations_spell_id
+        FOREIGN KEY (spell_id) REFERENCES spells(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_spell_translations_spell_language (spell_id, language),
+    INDEX idx_spell_translations_language (language),
+    FULLTEXT INDEX ft_spell_translations_name_en (name),
+    FULLTEXT INDEX ft_spell_translations_text_en (text),
+    FULLTEXT INDEX ft_spell_translations_name_text_en (name, text)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Таблица классов персонажей
