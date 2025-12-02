@@ -1,0 +1,48 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: pocket-spellbook-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+    ports:
+      - "${DB_PORT}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/database.sql:/docker-entrypoint-initdb.d/01-database.sql:ro
+    networks:
+      - pocket-spellbook-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: pocket-spellbook-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      - "${PMA_PORT}:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - pocket-spellbook-network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  pocket-spellbook-network:
+    driver: bridge
+
