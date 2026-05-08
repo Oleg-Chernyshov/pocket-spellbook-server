@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { SpellsModule } from './spells/spells.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -10,30 +10,47 @@ import { Spell } from './spells/entities/spell.entity';
 import { SpellTranslation } from './spells/entities/spell-translation.entity';
 import { CharacterClass } from './spells/entities/character-class.entity';
 import { Character } from './characters/entities/character.entity';
+import { configuration, validateEnvironment } from './config/configuration';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      load: [configuration],
+      validate: validateEnvironment,
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        const port = configService.get<string>('DB_PORT');
+      useFactory: (configService: ConfigService): TypeOrmModuleOptions => {
+        const commonOptions = {
+          entities: [User, Spell, SpellTranslation, CharacterClass, Character],
+          synchronize: configService.get<boolean>(
+            'database.synchronize',
+            false,
+          ),
+          logging: configService.get<boolean>('database.logging', false),
+        };
+
+        if (configService.get<string>('database.type') === 'sqlite') {
+          return {
+            type: 'sqlite',
+            database: configService.get<string>('database.name', ':memory:'),
+            ...commonOptions,
+          };
+        }
 
         return {
           type: 'mysql',
-          host: configService.get<string>('DB_HOST', 'localhost'),
-          port: port ? parseInt(port, 10) : 3306,
-          username: configService.get<string>('DB_USERNAME', 'root'),
-          password:
-            configService.get<string>('DB_PASSWORD') ??
-            configService.get<string>('DB_ROOT_PASSWORD', ''),
-          database: configService.get<string>('DB_DATABASE', 'pocket_spellbook'),
-          entities: [User, Spell, SpellTranslation, CharacterClass, Character],
-          synchronize: configService.get<string>('NODE_ENV') !== 'production',
-          logging: configService.get<string>('NODE_ENV') === 'development',
+          host: configService.get<string>('database.host', 'localhost'),
+          port: configService.get<number>('database.port', 3306),
+          username: configService.get<string>('database.username', 'root'),
+          password: configService.get<string>('database.password', ''),
+          database: configService.get<string>(
+            'database.name',
+            'pocket_spellbook',
+          ),
+          ...commonOptions,
         };
       },
       inject: [ConfigService],

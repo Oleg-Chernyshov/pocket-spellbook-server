@@ -1,4 +1,5 @@
-import { IsString, IsNumber, IsOptional, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsString, IsInt, IsOptional, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CharacterDto {
@@ -16,7 +17,8 @@ export class CharacterDto {
     example: 1,
     minimum: 1,
   })
-  @IsNumber()
+  @Type(() => Number)
+  @IsInt()
   @Min(1)
   characterClassId: number;
   @ApiPropertyOptional({
@@ -50,7 +52,8 @@ export class UpdateCharacterDto {
     minimum: 1,
   })
   @IsOptional()
-  @IsNumber()
+  @Type(() => Number)
+  @IsInt()
   @Min(1)
   characterClassId?: number;
 
@@ -72,7 +75,8 @@ export class AddSpellToCharacterDto {
     example: 1,
     minimum: 1,
   })
-  @IsNumber()
+  @Type(() => Number)
+  @IsInt()
   @Min(1)
   spellId: number;
 }

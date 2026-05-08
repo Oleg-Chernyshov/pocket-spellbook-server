@@ -1,31 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
+import request from 'supertest';
+import { createTestApp } from './create-test-app';
 
 describe('SpellsController (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [
-        ConfigModule.forRoot({
-          isGlobal: true,
-        }),
-        TypeOrmModule.forRoot({
-          type: 'sqlite',
-          database: ':memory:',
-          entities: [__dirname + '/../src/**/*.entity{.ts,.js}'],
-          synchronize: true,
-        }),
-        AppModule,
-      ],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
+    app = await createTestApp({ seedSpells: true });
   });
 
   afterAll(async () => {
@@ -70,7 +51,8 @@ describe('SpellsController (e2e)', () => {
 
     it('should filter spells by school in Russian', () => {
       return request(app.getHttpServer())
-        .get('/spells?school=призыв&language=ru')
+        .get('/spells')
+        .query({ school: 'призыв', language: 'ru' })
         .expect(200)
         .expect((res) => {
           expect(Array.isArray(res.body.data)).toBe(true);
@@ -94,7 +76,8 @@ describe('SpellsController (e2e)', () => {
 
     it('should search spells by name in Russian', () => {
       return request(app.getHttpServer())
-        .get('/spells?search=Кислот&language=ru')
+        .get('/spells')
+        .query({ search: 'Кислот', language: 'ru' })
         .expect(200)
         .expect((res) => {
           expect(Array.isArray(res.body.data)).toBe(true);
@@ -215,6 +198,35 @@ describe('SpellsController (e2e)', () => {
           if (res.body.length > 0) {
             expect(res.body[0].title).toBe(res.body[0].titleRu);
           }
+        });
+    });
+  });
+
+  describe('/spells/class/:classId/stats (GET)', () => {
+    it('should return spell statistics for a character class', () => {
+      return request(app.getHttpServer())
+        .get('/spells/class/1/stats')
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toEqual({
+            total: 1,
+            byLevel: { '0': 1 },
+            bySchool: { Conjuration: 1 },
+          });
+        });
+    });
+
+    it('should return localized spell statistics for a character class', () => {
+      return request(app.getHttpServer())
+        .get('/spells/class/1/stats')
+        .query({ language: 'ru' })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toEqual({
+            total: 1,
+            byLevel: { '0': 1 },
+            bySchool: { призыв: 1 },
+          });
         });
     });
   });

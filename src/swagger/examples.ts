@@ -1,3 +1,83 @@
+export const swaggerExamples = {
+  character: {
+    id: 1,
+    name: 'Gandalf',
+    characterClassId: 1,
+    spellSlots: {
+      '1': 4,
+      '2': 3,
+      '3': 2,
+    },
+  },
+  characterClasses: [
+    {
+      id: 1,
+      title: 'Artificer',
+      titleEn: 'Artificer',
+      titleRu: 'Изобретатель',
+      hasSpells: 1,
+    },
+    {
+      id: 2,
+      title: 'Bard',
+      titleEn: 'Bard',
+      titleRu: 'Бард',
+      hasSpells: 1,
+    },
+    {
+      id: 9,
+      title: 'Wizard',
+      titleEn: 'Wizard',
+      titleRu: 'Волшебник',
+      hasSpells: 1,
+    },
+  ],
+  localizedSpell: {
+    id: 1,
+    name: 'Fireball',
+    level: '3',
+    school: 'Evocation',
+    text: 'A bright streak flashes from your pointing finger...',
+    castingTime: '1 action',
+    range: '150 feet',
+    components: 'V, S, M',
+    duration: 'Instantaneous',
+    source: 'PHB',
+  },
+  pagination: {
+    page: 1,
+    limit: 20,
+    total: 100,
+    totalPages: 5,
+    hasNext: true,
+    hasPrev: false,
+  },
+  spellStats: {
+    total: 50,
+    byLevel: {
+      '0': 5,
+      '1': 10,
+      '2': 8,
+      '3': 7,
+      '4': 6,
+      '5': 4,
+      '6': 3,
+      '7': 3,
+      '8': 2,
+      '9': 2,
+    },
+    bySchool: {
+      Abjuration: 8,
+      Conjuration: 10,
+      Divination: 5,
+      Enchantment: 6,
+      Evocation: 12,
+      Illusion: 4,
+      Necromancy: 3,
+      Transmutation: 2,
+    },
+  },
+};
 export const ApiExamples = {
   // Примеры заклинаний
   spell: {

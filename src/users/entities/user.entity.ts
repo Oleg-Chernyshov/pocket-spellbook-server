@@ -22,13 +22,18 @@ export class User {
   @Column({ nullable: true })
   name: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'refresh_token',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   refreshToken: string | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
   @OneToMany(() => Character, (character) => character.user)

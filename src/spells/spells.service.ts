@@ -2,47 +2,27 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Spell } from './entities/spell.entity';
-import { SpellTranslation } from './entities/spell-translation.entity';
-import { CharacterClass } from './entities/character-class.entity';
 import {
   SpellFilter,
   LocalizedSpell,
   PaginatedSpellsResponse,
 } from './interfaces/spell.interface';
+import {
+  localizeSpell,
+  localizeSpells,
+} from './mappers/spell-localization.mapper';
 
 @Injectable()
 export class SpellsService {
   constructor(
     @InjectRepository(Spell)
-    private spellsRepository: Repository<Spell>,
-    @InjectRepository(SpellTranslation)
-    private spellTranslationsRepository: Repository<SpellTranslation>,
-    @InjectRepository(CharacterClass)
-    private characterClassRepository: Repository<CharacterClass>,
+    private readonly spellsRepository: Repository<Spell>,
   ) {}
 
-  private localizeSpell(
-    spell: Spell,
-    translation: SpellTranslation,
-  ): LocalizedSpell {
-    return {
-      id: spell.id,
-      name: translation.name,
-      level: spell.level,
-      text: translation.text,
-      school: translation.school,
-      castingTime: translation.castingTime,
-      range: translation.range,
-      materials: translation.materials ?? '',
-      components: translation.components,
-      duration: translation.duration,
-      source: translation.source,
-      createdAt: translation.createdAt ?? spell.createdAt,
-      updatedAt: translation.updatedAt ?? spell.updatedAt,
-    };
-  }
-
-  private buildQueryBuilder(filters?: SpellFilter, language: 'en' | 'ru' = 'en') {
+  private buildQueryBuilder(
+    filters?: SpellFilter,
+    language: 'en' | 'ru' = 'en',
+  ) {
     const queryBuilder = this.spellsRepository
       .createQueryBuilder('spell')
       .innerJoinAndSelect(
@@ -69,12 +49,20 @@ export class SpellsService {
     }
 
     if (filters?.search) {
-      const searchTerm = `${filters.search}*`;
+      const databaseType =
+        this.spellsRepository.manager.connection.options.type;
 
-      queryBuilder.andWhere(
-        'MATCH(translation.name, translation.text) AGAINST(:search IN BOOLEAN MODE)',
-        { search: searchTerm },
-      );
+      if (databaseType === 'mysql' || databaseType === 'mariadb') {
+        queryBuilder.andWhere(
+          'MATCH(translation.name, translation.text) AGAINST(:search IN BOOLEAN MODE)',
+          { search: `${filters.search}*` },
+        );
+      } else {
+        queryBuilder.andWhere(
+          '(LOWER(translation.name) LIKE LOWER(:search) OR LOWER(translation.text) LIKE LOWER(:search))',
+          { search: `%${filters.search}%` },
+        );
+      }
     }
 
     if (filters?.characterClass) {
@@ -96,13 +84,7 @@ export class SpellsService {
 
     const queryBuilder = this.buildQueryBuilder(filters, language);
 
-    if (filters?.search) {
-      queryBuilder.orderBy('translation.name', 'ASC');
-    } else {
-      queryBuilder.orderBy('translation.name', 'ASC');
-    }
-
-    queryBuilder.skip(skip).take(limit);
+    queryBuilder.orderBy('translation.name', 'ASC').skip(skip).take(limit);
 
     const [spells, total] = await queryBuilder.getManyAndCount();
 
@@ -110,19 +92,8 @@ export class SpellsService {
     const hasNext = page < totalPages;
     const hasPrev = page > 1;
 
-    const data: LocalizedSpell[] = spells
-      .map((spell) => {
-        const translation =
-          spell.translations && spell.translations.length > 0
-            ? spell.translations[0]
-            : null;
-
-        return translation ? this.localizeSpell(spell, translation) : null;
-      })
-      .filter((spell): spell is LocalizedSpell => spell !== null);
-
     return {
-      data,
+      data: localizeSpells(spells),
       pagination: {
         page,
         limit,
@@ -132,12 +103,6 @@ export class SpellsService {
         hasPrev,
       },
     };
-  }
-
-  async count(filters?: SpellFilter): Promise<number> {
-    const language = filters?.language || 'en';
-    const queryBuilder = this.buildQueryBuilder(filters, language);
-    return queryBuilder.getCount();
   }
 
   async findOne(
@@ -159,139 +124,6 @@ export class SpellsService {
       return null;
     }
 
-    return this.localizeSpell(spell, translation);
-  }
-
-  async addSpellToClass(classId: number, spellId: number): Promise<boolean> {
-    try {
-      const [characterClass, spell] = await Promise.all([
-        this.characterClassRepository.findOne({ where: { id: classId } }),
-        this.spellsRepository.findOne({ where: { id: spellId } }),
-      ]);
-
-      if (!characterClass || !spell) {
-        return false;
-      }
-
-      await this.characterClassRepository
-        .createQueryBuilder()
-        .insert()
-        .into('character_class_spells')
-        .values({
-          character_class_id: classId,
-          spell_id: spellId,
-        })
-        .execute();
-
-      return true;
-    } catch (error) {
-      console.error(error);
-      return false;
-    }
-  }
-
-  async removeSpellFromClass(
-    classId: number,
-    spellId: number,
-  ): Promise<boolean> {
-    try {
-      const result = await this.characterClassRepository
-        .createQueryBuilder()
-        .delete()
-        .from('character_class_spells')
-        .where('character_class_id = :classId AND spell_id = :spellId', {
-          classId,
-          spellId,
-        })
-        .execute();
-
-      return result?.affected ? result.affected > 0 : false;
-    } catch (error) {
-      console.error(error);
-      return false;
-    }
-  }
-
-  async getClassSpellsStats(classId: number): Promise<{
-    total: number;
-    byLevel: Record<string, number>;
-    bySchool: Record<string, number>;
-  }> {
-    const queryBuilder = this.spellsRepository
-      .createQueryBuilder('spell')
-      .innerJoin('character_class_spells', 'ccs', 'ccs.spell_id = spell.id')
-      .innerJoin(
-        'spell.translations',
-        'translation',
-        'translation.language = :language',
-        { language: 'en' },
-      )
-      .where('ccs.character_class_id = :classId', { classId });
-
-    const spells = await queryBuilder.getMany();
-
-    const byLevel: Record<string, number> = {};
-    const bySchool: Record<string, number> = {};
-
-    spells.forEach((spell) => {
-      byLevel[spell.level] = (byLevel[spell.level] || 0) + 1;
-      const translation = (spell as any).translations?.[0] as
-        | SpellTranslation
-        | undefined;
-      const school = translation?.school;
-      if (school) {
-        bySchool[school] = (bySchool[school] || 0) + 1;
-      }
-    });
-
-    return {
-      total: spells.length,
-      byLevel,
-      bySchool,
-    };
-  }
-
-  async getCharacterSpells(
-    characterId: number,
-    language: 'en' | 'ru' = 'en',
-  ): Promise<LocalizedSpell[]> {
-    const queryBuilder = this.spellsRepository
-      .createQueryBuilder('spell')
-      .innerJoinAndSelect(
-        'spell.translations',
-        'translation',
-        'translation.language = :language',
-        { language },
-      )
-      .innerJoin('character_spells', 'cs', 'cs.spell_id = spell.id')
-      .where('cs.character_id = :characterId', { characterId })
-      .orderBy('translation.name', 'ASC');
-
-    const spells = await queryBuilder.getMany();
-
-    return spells
-      .map((spell) => {
-        const translation =
-          spell.translations && spell.translations.length > 0
-            ? spell.translations[0]
-            : null;
-
-        return translation ? this.localizeSpell(spell, translation) : null;
-      })
-      .filter((spell): spell is LocalizedSpell => spell !== null);
-  }
-
-  async getAllCharacterClasses(language: 'en' | 'ru' = 'en') {
-    const classes = await this.characterClassRepository.find({
-      order: { id: 'ASC' },
-    });
-
-    return classes.map((cls) => ({
-      id: cls.id,
-      title: language === 'ru' ? cls.titleRu : cls.titleEn,
-      titleEn: cls.titleEn,
-      titleRu: cls.titleRu,
-      hasSpells: cls.hasSpells,
-    }));
+    return localizeSpell(spell, translation);
   }
 }

@@ -63,6 +63,3 @@ export class SpellTranslation {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-
-
-

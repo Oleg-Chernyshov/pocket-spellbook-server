@@ -30,6 +30,7 @@ export class UsersService {
     const user = this.usersRepository.create({
       email: createUserDto.email,
       password: hashedPassword,
+      name: createUserDto.name,
     });
 
     return this.usersRepository.save(user);
@@ -67,7 +68,7 @@ export class UsersService {
     refreshToken: string | null,
   ): Promise<void> {
     await this.usersRepository.update(userId, {
-      refreshToken: refreshToken ?? undefined,
+      refreshToken,
     });
   }
 }

@@ -1,10 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
+  const port = configService.get<number>('app.port', 3000);
+  const logger = new Logger('Bootstrap');
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -28,7 +32,6 @@ async function bootstrap() {
     .addTag('spells', 'Управление заклинаниями')
     .addTag('characters', 'Управление персонажами')
     .addTag('auth', 'Аутентификация и авторизация')
-    .addTag('users', 'Управление пользователями')
     .addBearerAuth(
       {
         type: 'http',
@@ -49,10 +52,8 @@ async function bootstrap() {
     },
   });
 
-  await app.listen(3000);
-  console.log('🚀 Приложение запущено на порту 3000');
-  console.log(
-    '📚 Swagger документация доступна по адресу: http://localhost:3000/api/docs',
-  );
+  await app.listen(port);
+  logger.log(`Приложение запущено на порту ${port}`);
+  logger.log(`Swagger доступен по адресу http://localhost:${port}/api/docs`);
 }
 bootstrap();

@@ -24,6 +24,7 @@ export class CharactersService {
   ): Promise<Character> {
     const character = this.charactersRepository.create({
       ...createCharacterDto,
+      spellSlots: createCharacterDto.spellSlots ?? {},
       userId,
     });
 
@@ -57,7 +58,7 @@ export class CharactersService {
   ): Promise<Character> {
     const character = await this.charactersRepository.findOne({
       where: { id: characterId, userId },
-      relations: ['spells', 'characterClass'],
+      relations: ['spells'],
     });
 
     if (!character) {
@@ -120,7 +121,7 @@ export class CharactersService {
     });
 
     if (!spell) {
-      throw new NotFoundException('Заклинание не найдено');
+      throw new NotFoundException('Spell not found');
     }
 
     return spell;
