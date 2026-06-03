@@ -57,21 +57,30 @@ JWT_REFRESH_SECRET=replace-with-local-refresh-secret
 JWT_REFRESH_EXPIRES_IN=7d
 ```
 
-3. Запустите MySQL через Docker:
+3. Запустите весь стек через Docker:
 
 ```bash
-docker compose up -d
+docker compose up --build -d
 ```
 
-`docker-compose.yml` создает MySQL и phpMyAdmin. База инициализируется из `scripts/database.sql`.
+`docker-compose.yml` создает backend-сервер, MySQL и phpMyAdmin. База инициализируется из `scripts/database.sql`.
 
-4. Запустите приложение:
+4. Проверьте API:
 
 ```bash
-npm run start:dev
+curl http://localhost:3000/api/docs
 ```
 
 Swagger доступен по адресу `http://localhost:3000/api/docs`.
+
+### Локальная разработка без Docker для backend
+
+Если нужно запускать NestJS локально, а БД оставить в Docker:
+
+```bash
+docker compose up -d mysql phpmyadmin
+npm run start:dev
+```
 
 ## Работа с базой данных
 
