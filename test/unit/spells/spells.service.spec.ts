@@ -50,13 +50,6 @@ describe('SpellsService', () => {
   const spellsRepository = {
     createQueryBuilder: jest.fn(),
     findOne: jest.fn(),
-    manager: {
-      connection: {
-        options: {
-          type: 'mysql',
-        },
-      },
-    },
   };
 
   beforeEach(async () => {
@@ -72,7 +65,6 @@ describe('SpellsService', () => {
 
     spellsRepository.createQueryBuilder.mockReturnValue(queryBuilder);
     spellsRepository.findOne.mockResolvedValue(null);
-    spellsRepository.manager.connection.options.type = 'mysql';
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -144,23 +136,12 @@ describe('SpellsService', () => {
     );
   });
 
-  it('uses MySQL full text search in MySQL-like databases', async () => {
+  it('uses MySQL full text search', async () => {
     await service.findAll({ search: 'Acid' });
 
     expect(queryBuilder.andWhere).toHaveBeenCalledWith(
       'MATCH(translation.name, translation.text) AGAINST(:search IN BOOLEAN MODE)',
       { search: 'Acid*' },
-    );
-  });
-
-  it('uses LIKE search outside MySQL-like databases', async () => {
-    spellsRepository.manager.connection.options.type = 'sqlite';
-
-    await service.findAll({ search: 'Acid' });
-
-    expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-      '(LOWER(translation.name) LIKE LOWER(:search) OR LOWER(translation.text) LIKE LOWER(:search))',
-      { search: '%Acid%' },
     );
   });
 

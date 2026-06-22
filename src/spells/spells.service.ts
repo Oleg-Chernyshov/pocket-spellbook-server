@@ -49,20 +49,10 @@ export class SpellsService {
     }
 
     if (filters?.search) {
-      const databaseType =
-        this.spellsRepository.manager.connection.options.type;
-
-      if (databaseType === 'mysql' || databaseType === 'mariadb') {
-        queryBuilder.andWhere(
-          'MATCH(translation.name, translation.text) AGAINST(:search IN BOOLEAN MODE)',
-          { search: `${filters.search}*` },
-        );
-      } else {
-        queryBuilder.andWhere(
-          '(LOWER(translation.name) LIKE LOWER(:search) OR LOWER(translation.text) LIKE LOWER(:search))',
-          { search: `%${filters.search}%` },
-        );
-      }
+      queryBuilder.andWhere(
+        'MATCH(translation.name, translation.text) AGAINST(:search IN BOOLEAN MODE)',
+        { search: `${filters.search}*` },
+      );
     }
 
     if (filters?.characterClass) {
