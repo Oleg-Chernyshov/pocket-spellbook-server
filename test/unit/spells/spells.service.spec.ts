@@ -136,12 +136,21 @@ describe('SpellsService', () => {
     );
   });
 
-  it('uses MySQL full text search', async () => {
+  it('uses LIKE search with wildcard escaping', async () => {
     await service.findAll({ search: 'Acid' });
 
     expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-      'MATCH(translation.name, translation.text) AGAINST(:search IN BOOLEAN MODE)',
-      { search: 'Acid*' },
+      "(translation.name LIKE :search ESCAPE '!' OR translation.text LIKE :search ESCAPE '!')",
+      { search: '%Acid%' },
+    );
+  });
+
+  it('escapes LIKE wildcards in search', async () => {
+    await service.findAll({ search: '100%_fire!' });
+
+    expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+      "(translation.name LIKE :search ESCAPE '!' OR translation.text LIKE :search ESCAPE '!')",
+      { search: '%100!%!_fire!!%' },
     );
   });
 

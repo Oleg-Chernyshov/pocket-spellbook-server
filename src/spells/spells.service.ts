@@ -49,9 +49,10 @@ export class SpellsService {
     }
 
     if (filters?.search) {
+      const term = `%${filters.search.trim().replace(/[!%_]/g, '!$&')}%`;
       queryBuilder.andWhere(
-        'MATCH(translation.name, translation.text) AGAINST(:search IN BOOLEAN MODE)',
-        { search: `${filters.search}*` },
+        "(translation.name LIKE :search ESCAPE '!' OR translation.text LIKE :search ESCAPE '!')",
+        { search: term },
       );
     }
 
