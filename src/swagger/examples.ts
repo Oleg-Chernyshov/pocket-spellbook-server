@@ -9,6 +9,24 @@ export const swaggerExamples = {
       '3': 2,
     },
   },
+  characterListItem: {
+    id: 1,
+    name: 'Gandalf',
+    characterClassId: 1,
+    spellSlots: {
+      '1': 4,
+      '2': 3,
+      '3': 2,
+    },
+    spellsCount: 12,
+    characterClass: {
+      id: 1,
+      title: 'Wizard',
+      titleEn: 'Wizard',
+      titleRu: 'Волшебник',
+      hasSpells: 1,
+    },
+  },
   characterClasses: [
     {
       id: 1,

@@ -33,6 +33,10 @@ export const ApiCreateCharacterDocs = () =>
       },
     }),
     ApiResponse({ status: 400, description: 'Некорректные данные' }),
+    ApiResponse({
+      status: 409,
+      description: 'Достигнут лимит персонажей на аккаунт',
+    }),
     authErrors(),
   );
 
@@ -40,13 +44,14 @@ export const ApiFindAllCharactersDocs = () =>
   applyDecorators(
     ApiOperation({
       summary: 'Получить всех персонажей',
-      description: 'Возвращает список всех персонажей текущего пользователя',
+      description:
+        'Возвращает облегчённый список персонажей текущего пользователя без изученных заклинаний. Сортировка по дате обновления, у каждого элемента есть spellsCount.',
     }),
     ApiResponse({
       status: 200,
       description: 'Список персонажей успешно получен',
       schema: {
-        example: [swaggerExamples.character],
+        example: [swaggerExamples.characterListItem],
       },
     }),
     authErrors(),
