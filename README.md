@@ -55,6 +55,7 @@ JWT_SECRET=replace-with-local-access-secret
 JWT_EXPIRES_IN=15m
 JWT_REFRESH_SECRET=replace-with-local-refresh-secret
 JWT_REFRESH_EXPIRES_IN=7d
+MAX_CHARACTERS_PER_USER=10
 ```
 
 3. Запустите весь стек через Docker:
@@ -169,3 +170,8 @@ npm test -- --runInBand
 npm run build
 npm run test:e2e -- --runInBand
 ```
+
+## Процесс разработки
+
+Репозиторий также используется, чтобы опробовать инструменты GitHub для управления проектом: issues, доску GitHub Projects, ветки по ролям, pull request'ы с ревью и CI. Роли исполнителей (`backend-dev1`, `qa-lead` и другие) условные — проект разрабатывает один автор.
+
