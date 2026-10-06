@@ -47,6 +47,8 @@ export class Character {
   @JoinColumn({ name: 'character_class_id' })
   characterClass: CharacterClass;
 
+  spellsCount?: number;
+
   @ManyToMany(() => Spell)
   @JoinTable({
     name: 'character_spells',

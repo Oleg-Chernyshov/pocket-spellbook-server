@@ -41,6 +41,9 @@ export const configuration = () => ({
     refreshSecret: process.env.JWT_REFRESH_SECRET || 'dev-refresh-token-secret',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
+  characters: {
+    maxPerUser: parsePort(process.env.MAX_CHARACTERS_PER_USER, 10),
+  },
 });
 
 export const validateEnvironment = (env: Environment) => {
