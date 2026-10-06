@@ -137,4 +137,94 @@ describe('CharactersController (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(404);
   });
+
+  it('should return a lightweight list with spellsCount and without learned spells', async () => {
+    const first = await request(app.getHttpServer())
+      .post('/characters')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ name: 'List One', characterClassId: 1 })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/characters')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ name: 'List Two', characterClassId: 1 })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/characters/${first.body.id}/spells/1`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .get('/characters')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200)
+      .expect((res) => {
+        expect(Array.isArray(res.body)).toBe(true);
+        expect(res.body.length).toBeGreaterThanOrEqual(2);
+        const listed = res.body.find(
+          (character: { id: number }) => character.id === first.body.id,
+        );
+        expect(listed).toBeDefined();
+        expect(listed.spellsCount).toBe(1);
+        expect(listed.spells).toBeUndefined();
+      });
+  });
+});
+
+describe('CharactersController limit (e2e)', () => {
+  let app: INestApplication;
+  let accessToken: string;
+
+  beforeAll(async () => {
+    process.env.MAX_CHARACTERS_PER_USER = '2';
+    app = await createTestApp({ seedSpells: true });
+
+    const credentials = {
+      email: 'character-limit-e2e@example.com',
+      password: 'password123',
+      name: 'Limited Owner',
+    };
+
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(credentials)
+      .expect(201);
+
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: credentials.email,
+        password: credentials.password,
+      })
+      .expect(200);
+
+    accessToken = loginResponse.body.access_token;
+  });
+
+  afterAll(async () => {
+    delete process.env.MAX_CHARACTERS_PER_USER;
+    await app.close();
+  });
+
+  it('should reject creating more characters than the configured limit', async () => {
+    await request(app.getHttpServer())
+      .post('/characters')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ name: 'First', characterClassId: 1 })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/characters')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ name: 'Second', characterClassId: 1 })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/characters')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ name: 'Third', characterClassId: 1 })
+      .expect(409);
+  });
 });
