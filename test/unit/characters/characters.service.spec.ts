@@ -9,7 +9,8 @@ import { CharactersService } from '../../../src/characters/characters.service';
 import { Character } from '../../../src/characters/entities/character.entity';
 import { Spell } from '../../../src/spells/entities/spell.entity';
 import { SpellTranslation } from '../../../src/spells/entities/spell-translation.entity';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 describe('CharactersService', () => {
   let service: CharactersService;
@@ -22,10 +23,16 @@ describe('CharactersService', () => {
     find: jest.fn(),
     findOne: jest.fn(),
     remove: jest.fn(),
+    count: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
 
   const mockSpellsRepository = {
     findOne: jest.fn(),
+  };
+
+  const mockConfigService = {
+    get: jest.fn().mockReturnValue(10),
   };
 
   const mockCharacter = ({ withRelations = false } = {}): Character =>
@@ -92,6 +99,7 @@ describe('CharactersService', () => {
           useValue: mockCharactersRepository,
         },
         { provide: getRepositoryToken(Spell), useValue: mockSpellsRepository },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
@@ -102,6 +110,8 @@ describe('CharactersService', () => {
     spellsRepository = module.get<Repository<Spell>>(getRepositoryToken(Spell));
 
     jest.clearAllMocks();
+    mockConfigService.get.mockReturnValue(10);
+    mockCharactersRepository.count.mockResolvedValue(0);
   });
 
   it('should be defined', () => {
@@ -153,19 +163,45 @@ describe('CharactersService', () => {
         userId: 10,
       });
     });
+
+    it('should throw ConflictException when the character limit is reached', async () => {
+      mockCharactersRepository.count.mockResolvedValue(10);
+
+      await expect(
+        service.create({ name: 'Gandalf', characterClassId: 1 }, 10),
+      ).rejects.toThrow(ConflictException);
+      expect(charactersRepository.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('findAllByUser', () => {
-    it('should find characters by userId with spells relation', async () => {
-      const list = [mockCharacter()];
+    it('should find characters by userId with class relation and spellsCount', async () => {
+      const list = [mockCharacter({ withRelations: true })];
       (charactersRepository.find as jest.Mock).mockResolvedValue(list);
+      (charactersRepository.createQueryBuilder as jest.Mock).mockReturnValue({
+        leftJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([{ id: 1, spellsCount: '4' }]),
+      });
 
       const result = await service.findAllByUser(10);
-      expect(result).toEqual(list);
+      expect(result[0].spellsCount).toBe(4);
       expect(charactersRepository.find).toHaveBeenCalledWith({
         where: { userId: 10 },
-        relations: ['spells'],
+        relations: ['characterClass'],
+        order: { updatedAt: 'DESC' },
       });
+    });
+
+    it('should return an empty array without counting spells', async () => {
+      (charactersRepository.find as jest.Mock).mockResolvedValue([]);
+
+      const result = await service.findAllByUser(10);
+      expect(result).toEqual([]);
+      expect(charactersRepository.createQueryBuilder).not.toHaveBeenCalled();
     });
   });
 
